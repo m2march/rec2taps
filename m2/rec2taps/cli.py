@@ -52,7 +52,7 @@ def rec2taps():
                                           args.distance,
                                           args.prominence)
     except errors.Rec2TapsError as r2te:
-        print(r2te)
+        print(r2te, file=sys.stderr)
         sys.exit()
 
     for p in peaks:

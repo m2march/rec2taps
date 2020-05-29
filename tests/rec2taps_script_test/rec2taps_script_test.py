@@ -36,7 +36,7 @@ def test_error_different_sr(mocker):
                  mocker.MagicMock(side_effect=[('1', None),
                                                ('2', None)]))
     stdout_mock = mocker.patch('sys.stdout', new_callable=io.StringIO)
-    stderr_mock = mocker.patch('sys.stdout', new_callable=io.StringIO)
+    stderr_mock = mocker.patch('sys.stderr', new_callable=io.StringIO)
 
     with pytest.raises(SystemExit):
         rec2taps()
@@ -53,7 +53,7 @@ def test_error_shorter_sti(mocker):
                  mocker.MagicMock(side_effect=[(None, np.zeros((10, 2))),
                                                (None, np.zeros((8, 2)))]))
     stdout_mock = mocker.patch('sys.stdout', new_callable=io.StringIO)
-    stderr_mock = mocker.patch('sys.stdout', new_callable=io.StringIO)
+    stderr_mock = mocker.patch('sys.stderr', new_callable=io.StringIO)
 
     with pytest.raises(SystemExit):
         rec2taps()
@@ -61,3 +61,16 @@ def test_error_shorter_sti(mocker):
     assert stdout_mock.getvalue() == ''
     assert stderr_mock.getvalue() == ('Stimuli file (sti) is shorter than '
                                       'recording file (rec).\n')
+
+
+def test_peaks_output(mocker):
+    mocker.patch('sys.argv', ['exec', 'sti', 'rec'])
+    mocker.patch('os.path.isfile', lambda x: True)
+    mocker.patch('m2.rec2taps.extract_peaks', lambda *x : [1, 2, 3])
+    stdout_mock = mocker.patch('sys.stdout', new_callable=io.StringIO)
+    stderr_mock = mocker.patch('sys.stderr', new_callable=io.StringIO)
+
+    rec2taps()
+
+    assert stderr_mock.getvalue() == ''
+    assert stdout_mock.getvalue() == '1\n2\n3\n'
