@@ -2,6 +2,7 @@ import logging
 import numpy as np
 from scipy.signal import find_peaks, fftconvolve
 from scipy.io import wavfile
+from m2.rec2taps import errors
 
 
 def prominence_amp(data, prominence=1.5):
@@ -32,32 +33,6 @@ def numpy_peaks(data, sr, distance=100, prominence=1.5):
     peaks, props = find_peaks(rect_ys, prominence=prominence_a, 
                               distance=distance)
     return peaks
-
-
-class UnequalSampleRate(ValueError):
-    'Stimuli file and the recording file have unequal sample rate'
-
-    def __init__(self, stimuli_file, recording_file, stimuli_sr, recording_sr):
-        self.stimuli_file = stimuli_file
-        self.recording_file = recording_file
-        self.stimuli_sr = stimuli_sr
-        self.recording_sr = recording_sr
-
-        super().__init__(('{} and {} do not have the same sample rate '
-                          '({} != {})').format(stimuli_file, recording_file,
-                                               stimuli_sr, recording_sr))
-
-
-class SignalTooShortForConvolution(ValueError):
-    pass
-
-
-class StimuliShorterThanRecording(ValueError):
-    'Stimuli signal is shorter than recording signal'
-
-    def __init__(self, stimuli_file, recording_file):
-        super().__init__(('Stimuli file ({}) is shorter than recording file '
-                          '({}).').format(stimuli_file, recording_file))
 
 
 def best_crosscorrelation(signal_a, channel_a, signal_b, channel_b):
@@ -145,6 +120,17 @@ def extract_peaks(stimuli_file, recording_file, distance, threshold):
 
     The function also requires the stimuli file to have the same sample rate
     as the recording file.
+
+    Params:
+        stimuli_file: path to the stimuli audio file
+        recording_file: path to the recording audio file
+        distance: minimum distance in ms between detected peaks
+        prominence: minimum prominence of detected peaks in multiples of the
+            input recording signal in standard deviation
+
+    Returns:
+        1d array of peaks in ms relative to the beginning of the stimulus
+        signal
     '''
     stimuli_sr, stimuli_signal = wavfile(stimuli_file)
     recording_sr, recording_signal = wavfile(recording_file)
@@ -153,5 +139,18 @@ def extract_peaks(stimuli_file, recording_file, distance, threshold):
         raise UnequalSampleRate(stimuli_file, recording_file, stimuli_sr,
                                 recording_sr)
 
+    si, ri, lag_s = best_channel_crosscorrelation(stimuli_signal,
+                                                  recording_signal)
+    
+    logging.debug(('Obtaining lag from recording to '
+                   'stimuli using channels {} and {} '
+                   'from stimuli and recording audios (resp.)').format(
+                   si, ri))
 
+    lag = lag_s / sr * 1000
+    logging.debug(('Recording is delayed {} ms from the stimuli').format(lag))
 
+    peaks = numpy_peaks(recording_signal, recording_sr,
+                        distance, prominence)
+
+    return (np.array(peaks) / sr * 1000) - lag

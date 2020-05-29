@@ -44,7 +44,8 @@ def lag_signal(signal, lag, sr):
     if lag < 0:
         signal = signal[-lag_s:, :]
     if lag > 0:
-        signal = np.concatenate([np.zeros((lag_s, 2)),
+        std = signal.std()
+        signal = np.concatenate([np.random.uniform(-std, std, (lag_s, 2)),
                                  signal])
     return signal
 
@@ -58,11 +59,19 @@ LAGS = [0, -50, -10, 10, 50, 107]
 def test_best_channel_crosscorrelation(stim_data, stim_alt_data, rec_data, 
                                        lag, inverted, stereo_unequal,
                                        stim_base_lag):
-    print(stim_base_lag)
+    '''
+    Tests rec2taps.test_best_channel_crosscorrelation.
+
+    It asserts that the correct channels from stimuli and recording
+    audio are selected independently of the channel used for loopback on the
+    recording and if the stimulus audio has the same audio in both channels.
+
+    It also asserts the accuracy of the lag detected by adding various
+    lags to the recording audio.
+    '''
     # Stim
     if stereo_unequal != False:
         l = 0 if stereo_unequal != 'inverted' else 1
-        print('unequal:', l)
         stim_subdata = stim_data[:, 0]
         alt_stim_subdata = stim_alt_data[:, 0]
         max_width = max(len(stim_subdata), len(alt_stim_subdata))
