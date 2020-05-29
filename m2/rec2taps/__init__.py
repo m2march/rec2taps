@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, fftconvolve
 from scipy.io import wavfile
 
 
@@ -48,7 +48,47 @@ class UnequalSampleRate(ValueError):
                                                stimuli_sr, recording_sr))
 
 
-def find_best_crosscorrelation(stimuli_signal, recording_signal):
+class SignalTooShortForConvolution(ValueError):
+    pass
+
+
+class StimuliShorterThanRecording(ValueError):
+    'Stimuli signal is shorter than recording signal'
+
+    def __init__(self, stimuli_file, recording_file):
+        super().__init__(('Stimuli file ({}) is shorter than recording file '
+                          '({}).').format(stimuli_file, recording_file))
+
+
+def best_crosscorrelation(signal_a, channel_a, signal_b, channel_b):
+    '''
+    Correlates both signals and return max crosscorr value and position.
+
+    Args:
+        signal_a, signal_b: signals to be cross correlated as 2d array
+        channel_a, channel_b: channels to be used from each signal
+
+    Returns:
+        dictionary with best crosscorr value and position of the value. E.g.:
+
+        { 'argmax': 12540, 'max': 45.6 }
+
+    '''
+    if (signal_a[:, channel_a].shape[0] < signal_b[:, channel_b].shape[0]):
+        print(signal_a[:, channel_a].shape[0],
+              signal_b[:, channel_b].shape[0])
+        raise SignalTooShortForConvolution()
+
+    cc = fftconvolve(signal_a[:, channel_a], 
+                     list(reversed(signal_b[:, channel_b])), 
+                     'valid')
+    return {
+        'argmax': np.argmax(cc),
+        'max': np.max(cc)
+    }
+
+
+def best_channel_crosscorrelation(stimuli_signal, recording_signal):
     '''
     Returns indexes and lag of the channels that best correlate the signals.
 
@@ -76,20 +116,16 @@ def find_best_crosscorrelation(stimuli_signal, recording_signal):
     '''
     corrs = [
         [
-            {
-                'argmax': np.argmax(cc),
-                'max': np.max(cc)
-            }
-            for cc in [np.correlate(stimuli_signal[:, si], 
-                                    recording_signal[:, ri])]
+            best_crosscorrelation(recording_signal, ri, stimuli_signal, si)
             for ri in [0, 1]
         ]
         for si in [0, 1]
     ]
     max_cor_idx = np.argmax([[c['max'] for c in x] for x in corrs])
 
-    return (max_cor_idx[0], max_cor_idx[1], 
-            corrs[max_cor_idx[0], max_cor_idx[1]]['argmax'])
+    row = max_cor_idx // 2
+    col = max_cor_idx % 2
+    return (row, col, corrs[row][col]['argmax'])
 
 
 def extract_peaks(stimuli_file, recording_file, distance, threshold):
@@ -116,5 +152,6 @@ def extract_peaks(stimuli_file, recording_file, distance, threshold):
     if (stimuli_sr != recording_sr):
         raise UnequalSampleRate(stimuli_file, recording_file, stimuli_sr,
                                 recording_sr)
+
 
 
