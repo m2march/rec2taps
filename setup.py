@@ -9,7 +9,9 @@ setup(name='rec2taps',
       author_email='m2.march@gmail.com',
       packages=['m2', 'm2.rec2taps'],
       namespace_packages=['m2'],
-      #scripts=['scripts/rec2taps'],
+      entry_points={
+          'console_scripts': ['rec2taps=m2.rec2taps.cli:rec2taps']
+      },
       install_requires=[
           'numpy',
           'scipy'

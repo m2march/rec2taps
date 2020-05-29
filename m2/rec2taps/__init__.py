@@ -3,9 +3,10 @@ import numpy as np
 from scipy.signal import find_peaks, fftconvolve
 from scipy.io import wavfile
 from m2.rec2taps import errors
+from m2.rec2taps.defaults import DEFAULT_DISTANCE, DEFAULT_PROMINENCE
 
 
-def prominence_amp(data, prominence=1.5):
+def prominence_amp(data, prominence=DEFAULT_PROMINENCE):
     prominence_amp = data.std() * prominence
     return prominence_amp
 
@@ -16,7 +17,8 @@ def rectify(data, prominence_amp):
     return rect_ys
 
 
-def numpy_peaks(data, sr, distance=100, prominence=1.5):
+def numpy_peaks(data, sr, distance=DEFAULT_DISTANCE,
+                prominence=DEFAULT_PROMINENCE):
     '''
     Obtains peaks using scipy find_peaks adjusted to our FSR data.
     
@@ -30,7 +32,7 @@ def numpy_peaks(data, sr, distance=100, prominence=1.5):
     prominence_a = prominence_amp(data, prominence)
     rect_ys = rectify(data, prominence_a)
     distance = distance * sr / 1000
-    peaks, props = find_peaks(rect_ys, prominence=prominence_a, 
+    peaks, props = find_peaks(rect_ys, prominence=prominence_a,
                               distance=distance)
     return peaks
 
@@ -50,12 +52,10 @@ def best_crosscorrelation(signal_a, channel_a, signal_b, channel_b):
 
     '''
     if (signal_a[:, channel_a].shape[0] < signal_b[:, channel_b].shape[0]):
-        print(signal_a[:, channel_a].shape[0],
-              signal_b[:, channel_b].shape[0])
-        raise SignalTooShortForConvolution()
+        raise errors.SignalTooShortForConvolution()
 
-    cc = fftconvolve(signal_a[:, channel_a], 
-                     list(reversed(signal_b[:, channel_b])), 
+    cc = fftconvolve(signal_a[:, channel_a],
+                     list(reversed(signal_b[:, channel_b])),
                      'valid')
     return {
         'argmax': np.argmax(cc),
@@ -103,7 +103,7 @@ def best_channel_crosscorrelation(stimuli_signal, recording_signal):
     return (row, col, corrs[row][col]['argmax'])
 
 
-def extract_peaks(stimuli_file, recording_file, distance, threshold):
+def extract_peaks(stimuli_file, recording_file, distance, prominence):
     '''
     Extracts peaks from recording file synchronized to the stimuli.
 
@@ -132,25 +132,34 @@ def extract_peaks(stimuli_file, recording_file, distance, threshold):
         1d array of peaks in ms relative to the beginning of the stimulus
         signal
     '''
-    stimuli_sr, stimuli_signal = wavfile(stimuli_file)
-    recording_sr, recording_signal = wavfile(recording_file)
+    logging.debug(('Obtaining peaks for {} synched to {} with params '
+                   'distance={} and prominence={}').format(
+                       recording_file, stimuli_file, distance, prominence))
+
+    stimuli_sr, stimuli_signal = wavfile.read(stimuli_file)
+    recording_sr, recording_signal = wavfile.read(recording_file)
 
     if (stimuli_sr != recording_sr):
-        raise UnequalSampleRate(stimuli_file, recording_file, stimuli_sr,
-                                recording_sr)
+        raise errors.UnequalSampleRate(stimuli_file, recording_file,
+                                       stimuli_sr, recording_sr)
 
-    si, ri, lag_s = best_channel_crosscorrelation(stimuli_signal,
-                                                  recording_signal)
-    
+    try:
+        si, ri, lag_s = best_channel_crosscorrelation(stimuli_signal,
+                                                      recording_signal)
+    except errors.SignalTooShortForConvolution as r2te:
+        ne = errors.StimuliShorterThanRecording(stimuli_file,
+                                                recording_file)
+        raise ne from r2te
+
     logging.debug(('Obtaining lag from recording to '
                    'stimuli using channels {} and {} '
                    'from stimuli and recording audios (resp.)').format(
-                   si, ri))
+        si, ri))
 
-    lag = lag_s / sr * 1000
+    lag = lag_s / recording_sr * 1000
     logging.debug(('Recording is delayed {} ms from the stimuli').format(lag))
 
-    peaks = numpy_peaks(recording_signal, recording_sr,
+    peaks = numpy_peaks(recording_signal[:, 1-ri], recording_sr,
                         distance, prominence)
 
-    return (np.array(peaks) / sr * 1000) - lag
+    return (np.array(peaks) / recording_sr * 1000) - lag
