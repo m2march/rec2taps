@@ -13,7 +13,7 @@ def rec2taps():
                      '"Simple and cheap setup for measuring timed responses '
                      'to auditory stimuli" (Miguel et. al. 2020).')
     )
-
+    
     parser.add_argument('stimuli_file', type=str,
                         help='audio file of the stimuli')
     parser.add_argument('recording_file', type=str,
