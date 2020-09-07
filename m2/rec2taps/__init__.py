@@ -63,13 +63,13 @@ def best_crosscorrelation(signal_a, channel_a, signal_b, channel_b):
     }
 
 
-def best_channel_crosscorrelation(stimuli_signal, recording_signal):
+def best_channel_crosscorrelation(stimulus_signal, recording_signal):
     '''
     Returns indexes and lag of the channels that best correlate the signals.
 
-    The function compares stimuli and recording channels assuming one of the
+    The function compares stimulus and recording channels assuming one of the
     channels from the recording was recorded as loopback of another of the
-    channels from the stimuli. 
+    channels from the stimulus. 
 
     It returns an index for each signal indicating the channels that best
     cross correlate between both. Additionally, it returns the
@@ -78,20 +78,20 @@ def best_channel_crosscorrelation(stimuli_signal, recording_signal):
     The functions assumes boths signals have equal sample rate.
 
     Args:
-        stimuli_signal: 2d array with the signal time series from the stimuli
+        stimulus_signal: 2d array with the signal time series from the stimulus
             audio
         recording_signal: 2d array with the signal time series from the
             recording audio
 
     Returns:
         Returns 3 elements as a tuple:
-            stimuli loopback channel (0 or 1)
+            stimulus loopback channel (0 or 1)
             recording loopback channel (0 or 1)
-            delay between stimuli to recorded loopback in samples
+            delay between stimulus to recorded loopback in samples
     '''
     corrs = [
         [
-            best_crosscorrelation(recording_signal, ri, stimuli_signal, si)
+            best_crosscorrelation(recording_signal, ri, stimulus_signal, si)
             for ri in [0, 1]
         ]
         for si in [0, 1]
@@ -103,26 +103,28 @@ def best_channel_crosscorrelation(stimuli_signal, recording_signal):
     return (row, col, corrs[row][col]['argmax'])
 
 
-def extract_peaks(stimuli_file, recording_file, distance, prominence):
+def extract_peaks(stimulus_file, recording_file, 
+                  distance=DEFAULT_DISTANCE, 
+                  prominence=DEFAULT_PROMINENCE):
     '''
-    Extracts peaks from recording file synchronized to the stimuli.
+    Extracts peaks from recording file synchronized to the stimulus.
 
     The function extracts peaks from the recording file considering it has two
-    channels, one with the loopback of the stimuli and another one with the
+    channels, one with the loopback of the stimulus and another one with the
     recording of the input device.
 
     To select the channel from the recording file, it uses the one that has the
-    lowest cross-correlation with any channel of the stimuli file.
+    lowest cross-correlation with any channel of the stimulus file.
 
     The cross-correlation of the other channel in the recording file is used to
-    find the lag between stimuli and recording to offset the peaks found to the
-    start of the stimuli.
+    find the lag between stimulus and recording to offset the peaks found to the
+    start of the stimulus.
 
-    The function also requires the stimuli file to have the same sample rate
+    The function also requires the stimulus file to have the same sample rate
     as the recording file.
 
     Params:
-        stimuli_file: path to the stimuli audio file
+        stimulus_file: path to the stimulus audio file
         recording_file: path to the recording audio file
         distance: minimum distance in ms between detected peaks
         prominence: minimum prominence of detected peaks in multiples of the
@@ -134,30 +136,30 @@ def extract_peaks(stimuli_file, recording_file, distance, prominence):
     '''
     logging.debug(('Obtaining peaks for {} synched to {} with params '
                    'distance={} and prominence={}').format(
-                       recording_file, stimuli_file, distance, prominence))
+                       recording_file, stimulus_file, distance, prominence))
 
-    stimuli_sr, stimuli_signal = wavfile.read(stimuli_file)
+    stimulus_sr, stimulus_signal = wavfile.read(stimulus_file)
     recording_sr, recording_signal = wavfile.read(recording_file)
 
-    if (stimuli_sr != recording_sr):
-        raise errors.UnequalSampleRate(stimuli_file, recording_file,
-                                       stimuli_sr, recording_sr)
+    if (stimulus_sr != recording_sr):
+        raise errors.UnequalSampleRate(stimulus_file, recording_file,
+                                       stimulus_sr, recording_sr)
 
     try:
-        si, ri, lag_s = best_channel_crosscorrelation(stimuli_signal,
+        si, ri, lag_s = best_channel_crosscorrelation(stimulus_signal,
                                                       recording_signal)
     except errors.SignalTooShortForConvolution as r2te:
-        ne = errors.StimuliShorterThanRecording(stimuli_file,
+        ne = errors.StimuliShorterThanRecording(stimulus_file,
                                                 recording_file)
         raise ne from r2te
 
     logging.debug(('Obtaining lag from recording to '
-                   'stimuli using channels {} and {} '
-                   'from stimuli and recording audios (resp.)').format(
+                   'stimulus using channels {} and {} '
+                   'from stimulus and recording audios (resp.)').format(
         si, ri))
 
     lag = lag_s / recording_sr * 1000
-    logging.debug(('Recording is delayed {} ms from the stimuli').format(lag))
+    logging.debug(('Recording is delayed {} ms from the stimulus').format(lag))
 
     peaks = numpy_peaks(recording_signal[:, 1-ri], recording_sr,
                         distance, prominence)
