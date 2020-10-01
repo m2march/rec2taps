@@ -32,6 +32,17 @@ def rec2taps():
     parser.add_argument('-v', dest='verbose',
                         action='store_true', 
                         help=('Enables printing standard information.'))
+    parser.add_argument('-D', '--debug_plot', dest='debug_plot',
+                        const=defaults.DEFAULT_DEBUG_PLOT, 
+                        default=None, nargs='?',
+                        help=('Enables outputting a debug plot overlaying '
+                              'peaks with the recording signal. Can receive '
+                              'an argument to define the output filename.'))
+    parser.add_argument('-i', dest='invert_input',
+                        default=False, action='store_true',
+                        help=('Enables outputting a debug plot overlaying '
+                              'peaks with the recording signal. Can receive '
+                              'an argument to define the output filename.'))
     args = parser.parse_args()
 
     if not os.path.isfile(args.stimuli_file):
@@ -50,7 +61,10 @@ def rec2taps():
         peaks = m2.rec2taps.extract_peaks(args.stimuli_file,
                                           args.recording_file,
                                           args.distance,
-                                          args.prominence)
+                                          args.prominence,
+                                          args.debug_plot,
+                                          args.invert_input
+                                         )
     except errors.Rec2TapsError as r2te:
         print(r2te, file=sys.stderr)
         sys.exit()

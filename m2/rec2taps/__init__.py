@@ -5,6 +5,20 @@ from scipy.io import wavfile
 from m2.rec2taps import errors
 from m2.rec2taps.defaults import DEFAULT_DISTANCE, DEFAULT_PROMINENCE
 
+CAN_DEBUG_PLOT = False
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+    matplotlib.use('Agg')
+    CAN_DEBUG_PLOT = True
+except ImportError as ie:
+    logging.warn(('Matplotlib is not available. If --debug_plot flag is used '
+                  'no plot will be produced.'))
+except Exception as e:
+    logging.error(
+        ('An error occured while loading matplotlib: {}'.format(str(e)))
+    )
+
 
 def prominence_amp(data, prominence=DEFAULT_PROMINENCE):
     prominence_amp = data.std() * prominence
@@ -105,7 +119,10 @@ def best_channel_crosscorrelation(stimulus_signal, recording_signal):
 
 def extract_peaks(stimulus_file, recording_file, 
                   distance=DEFAULT_DISTANCE, 
-                  prominence=DEFAULT_PROMINENCE):
+                  prominence=DEFAULT_PROMINENCE,
+                  debug_plot=None,
+                  invert_input_signal=False,
+                 ):
     '''
     Extracts peaks from recording file synchronized to the stimulus.
 
@@ -129,6 +146,10 @@ def extract_peaks(stimulus_file, recording_file,
         distance: minimum distance in ms between detected peaks
         prominence: minimum prominence of detected peaks in multiples of the
             input recording signal in standard deviation
+        debug_plot: if not None, string with file path to output a debug plot
+            of the detected peaks
+        invert_input_signal: if not True, input signal from recording_file
+            is inverted (* -1)
 
     Returns:
         1d array of peaks in ms relative to the beginning of the stimulus
@@ -161,7 +182,24 @@ def extract_peaks(stimulus_file, recording_file,
     lag = lag_s / recording_sr * 1000
     logging.debug(('Recording is delayed {} ms from the stimulus').format(lag))
 
-    peaks = numpy_peaks(recording_signal[:, 1-ri], recording_sr,
-                        distance, prominence)
+    fsr_signal = recording_signal[:, 1-ri]
+    
+    fsr_signal = fsr_signal * (1 - 2 * int(invert_input_signal))
 
-    return (np.array(peaks) / recording_sr * 1000) - lag
+    peaks = numpy_peaks(fsr_signal, recording_sr, distance, prominence)
+
+    recording_peaks = (np.array(peaks) / recording_sr * 1000)
+
+
+    if debug_plot is not None and CAN_DEBUG_PLOT:
+        plt.figure(figsize=(10, 6))
+        plt.plot(np.arange(fsr_signal.shape[0]) / recording_sr * 1000,
+                 fsr_signal, color='C2')
+        ymin, ymax = plt.ylim()
+        plt.yticks([])
+        plt.vlines(recording_peaks, ymin, ymax, color='C1')
+        plt.xlabel('time (ms)')
+        plt.ylabel('amplitude')
+        plt.savefig(debug_plot)
+
+    return recording_peaks - lag

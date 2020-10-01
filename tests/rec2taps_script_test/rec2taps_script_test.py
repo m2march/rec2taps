@@ -15,7 +15,8 @@ def test_default_arguments(mocker):
     rec2taps()
 
     m2.rec2taps.extract_peaks.assert_called_once_with(
-        'sti', 'rec', defaults.DEFAULT_DISTANCE, defaults.DEFAULT_PROMINENCE)
+        'sti', 'rec', defaults.DEFAULT_DISTANCE, defaults.DEFAULT_PROMINENCE,
+        None, False)
 
 
 def test_passed_arguments(mocker):
@@ -26,7 +27,42 @@ def test_passed_arguments(mocker):
     rec2taps()
 
     m2.rec2taps.extract_peaks.assert_called_once_with(
-        'sti', 'rec', 50, 3)
+        'sti', 'rec', 50, 3, None, False)
+
+
+def test_debug_plot_default(mocker):
+    mocker.patch('m2.rec2taps.extract_peaks')
+    mocker.patch('sys.argv', ['exec', 'sti', 'rec', '-d', '50', '-p', '3', 
+                              '-D'])
+    mocker.patch('os.path.isfile', lambda x: True)
+
+    rec2taps()
+
+    m2.rec2taps.extract_peaks.assert_called_once_with(
+        'sti', 'rec', 50, 3, defaults.DEFAULT_DEBUG_PLOT, False)
+
+
+def test_debug_plot_custom(mocker):
+    mocker.patch('m2.rec2taps.extract_peaks')
+    mocker.patch('sys.argv', ['exec', 'sti', 'rec', '-d', '50', '-p', '3', 
+                              '-D', 'plot.pdf'])
+    mocker.patch('os.path.isfile', lambda x: True)
+
+    rec2taps()
+
+    m2.rec2taps.extract_peaks.assert_called_once_with(
+        'sti', 'rec', 50, 3, 'plot.pdf', False)
+
+def test_invert(mocker):
+    mocker.patch('m2.rec2taps.extract_peaks')
+    mocker.patch('sys.argv', ['exec', 'sti', 'rec', '-d', '50', '-p', '3', 
+                              '-i'])
+    mocker.patch('os.path.isfile', lambda x: True)
+
+    rec2taps()
+
+    m2.rec2taps.extract_peaks.assert_called_once_with(
+        'sti', 'rec', 50, 3, None, True)
 
 
 def test_error_different_sr(mocker):
