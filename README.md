@@ -5,8 +5,7 @@ the start time of an stimuli device under the assumption that the recording has
 one channel where a loopback from the stimuli was recorded.
 
 This tool was written as part of a proposed setup for recording tap times
-presented in "Simple and cheap setup for measuring timed responses to auditory
-stimuli" (Miguel et. al. 2020).
+presented in _"A simple and cheap setup for timing tapping responses synchronized to auditory stimuli."_ (Miguel, M.A., Riera, P. & Slezak, D.F.  Behav Res (2021). https://doi.org/10.3758/s13428-021-01653-y).
 
 The tool works as follows: according the proposed experimental setup, a channel
 from the output is looped back into the recording device and recorded along
