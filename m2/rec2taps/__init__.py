@@ -70,9 +70,9 @@ def best_crosscorrelation(signal_a, channel_a, signal_b, channel_b):
 
     cc = fftconvolve(signal_a[:, channel_a],
                      list(reversed(signal_b[:, channel_b])),
-                     'valid')
+                     'same')
     return {
-        'argmax': np.argmax(cc),
+        'argmax': np.argmax(cc) - signal_b.shape[0] // 2,
         'max': np.max(cc)
     }
 
@@ -203,3 +203,35 @@ def extract_peaks(stimulus_file, recording_file,
         plt.savefig(debug_plot)
 
     return recording_peaks - lag
+
+
+def individual_channel_processing(stimuli_file, stimuli_channel,
+                                  loopback_file, loopback_channel,
+                                  tapping_file_channels,
+                                  distance,
+                                  prominence):
+
+    stimuli_sr, stimuli_data = wavfile.read(stimuli_file)
+    loopback_sr, loopback_data = wavfile.read(loopback_file)
+    assert(stimuli_sr == loopback_sr)
+
+    best_cc = best_crosscorrelation(stimuli_data, stimuli_channel,
+                                    loopback_data, loopback_channel)
+    lag = best_cc['argmax'] * 1000 / stimuli_sr 
+
+    ret = {
+        'loopback_lag_samples': best_cc['argmax'],
+        'loopback_lag_ms': best_cc['argmax'] * 1000 / stimuli_sr,
+        'peaks': {}
+    }
+    for tapping_file, tapping_channel in tapping_file_channels:
+        tapping_sr, tapping_data = wavfile.read(tapping_file)
+
+        assert(tapping_sr == stimuli_sr)
+        peaks = numpy_peaks(tapping_data[:, tapping_channel], tapping_sr, 
+                            distance=distance, prominence=prominence)
+
+        recording_peaks = (np.array(peaks) / tapping_sr * 1000)
+        ret['peaks'][tapping_file] = recording_peaks - lag
+
+    return ret

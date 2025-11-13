@@ -9,6 +9,7 @@ import m2.rec2taps
 import re
 from m2.rec2taps import defaults
 from m2.rec2taps import errors
+from pathlib import Path
 
 FILE_CHANNEL_RE = re.compile(r'([\w\.]+):(\d+)')
 
@@ -56,6 +57,12 @@ def rec2taps():
                         help=('Enables outputting a debug plot overlaying '
                               'peaks with the recording signal. Can receive '
                               'an argument to define the output filename.'))
+    parser.add_argument('-o', dest='output_dir',
+                        default='output', 
+                        help=('If working with multiple files (see '
+                              '"tapping_files"), output directory to store '
+                              'the extracted taps.')
+                       )
     args = parser.parse_args()
 
     if args.verbose:
@@ -82,6 +89,8 @@ def rec2taps():
 
         stimuli_file, stimuli_channel = FILE_CHANNEL_RE.match(args.stimuli).groups()
         loopback_file, loopback_channel = FILE_CHANNEL_RE.match(args.recording).groups()
+
+
         tapping_files_channels = [FILE_CHANNEL_RE.match(t).groups() for t in args.tapping_files]
 
         audio_files = [stimuli_file, loopback_file] + [
@@ -92,11 +101,39 @@ def rec2taps():
             if not os.path.isfile(file):
                 logging.error(f' Audio file could not be found: {file}')
                 can_proceed = False
-        
+
+        try:
+            stimuli_channel = int(stimuli_channel)
+            loopback_channel = int(loopback_channel)
+            tapping_files_channels = [(f, int(c))
+                                      for f, c in tapping_files_channels]
+        except ValueError:
+            logging.error('One of the channel descriptions is not a valid'
+                          'integer.')
+            can_proceed = False
+
         if not can_proceed:
             logging.error(' Files were not properly input. Stopping.')
             sys.exit()
-    
+
+        synced_taps = m2.rec2taps.individual_channel_processing(
+            stimuli_file, stimuli_channel, loopback_file, loopback_channel,
+            tapping_files_channels, args.distance, args.prominence)
+
+        logging.info(f'Loopback lag found: '
+                     f'{synced_taps["loopback_lag_samples"]} samples, '
+                     f'{synced_taps["loopback_lag_ms"]} ms')
+
+        out_dir = Path(args.output_dir)
+
+        if not out_dir.is_dir():
+            out_dir.mkdir()
+
+        for file_name, peaks in synced_taps['peaks'].items():
+            with open(out_dir / (file_name + '.txt'), 'w') as f:
+                for p in peaks:
+                    print(p, file=f)
+
 
     else:
         logging.info('Processing files in STIMULI-RECORDING FILE MODE')
