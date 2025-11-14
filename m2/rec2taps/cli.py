@@ -1,8 +1,6 @@
 import sys
 import logging
-logging.basicConfig(filename=sys.stderr)
-logging.getLogger().setLevel(logging.INFO)
-
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 import argparse
 import os
 import m2.rec2taps
@@ -63,6 +61,9 @@ def rec2taps():
                               '"tapping_files"), output directory to store '
                               'the extracted taps.')
                        )
+    parser.add_argument('--ignore_lag', 
+                        default=False, action='store_true'
+                       )
     args = parser.parse_args()
 
     if args.verbose:
@@ -118,7 +119,9 @@ def rec2taps():
 
         synced_taps = m2.rec2taps.individual_channel_processing(
             stimuli_file, stimuli_channel, loopback_file, loopback_channel,
-            tapping_files_channels, args.distance, args.prominence)
+            tapping_files_channels, args.distance, args.prominence,
+            args.ignore_lag
+        )
 
         logging.info(f'Loopback lag found: '
                      f'{synced_taps["loopback_lag_samples"]} samples, '

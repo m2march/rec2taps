@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import librosa
 from scipy.signal import find_peaks, fftconvolve
 from scipy.io import wavfile
 from m2.rec2taps import errors
@@ -209,7 +210,9 @@ def individual_channel_processing(stimuli_file, stimuli_channel,
                                   loopback_file, loopback_channel,
                                   tapping_file_channels,
                                   distance,
-                                  prominence):
+                                  prominence,
+                                  ignore_lag = False
+                                 ):
 
     stimuli_sr, stimuli_data = wavfile.read(stimuli_file)
     loopback_sr, loopback_data = wavfile.read(loopback_file)
@@ -221,17 +224,35 @@ def individual_channel_processing(stimuli_file, stimuli_channel,
 
     ret = {
         'loopback_lag_samples': best_cc['argmax'],
-        'loopback_lag_ms': best_cc['argmax'] * 1000 / stimuli_sr,
+        'loopback_lag_ms': lag,
         'peaks': {}
     }
     for tapping_file, tapping_channel in tapping_file_channels:
-        tapping_sr, tapping_data = wavfile.read(tapping_file)
+        #tapping_sr, tapping_data = wavfile.read(tapping_file)
+        tapping_data, tapping_sr = librosa.load(tapping_file, sr=None,
+                                                mono=False)
 
         assert(tapping_sr == stimuli_sr)
         peaks = numpy_peaks(tapping_data[:, tapping_channel], tapping_sr, 
                             distance=distance, prominence=prominence)
+        prominence_a = prominence_amp(tapping_data[tapping_channel,:],
+                                      prominence)
+        peaks = librosa.onset.onset_detect(
+            y = tapping_data[tapping_channel,:],
+            sr = tapping_sr,
+            units = 'samples',
+            hop_length = 16,
+            wait = int(tapping_sr * (distance / 1000) / 512),
+            backtrack = True,
+            delta = 0.5,
+            #pre_max = int(tapping_sr * (distance / 1000) / 512) // 2,
+            #post_max = int(tapping_sr * (distance / 1000) / 512) // 2,
+        )
 
         recording_peaks = (np.array(peaks) / tapping_sr * 1000)
-        ret['peaks'][tapping_file] = recording_peaks - lag
+        if ignore_lag:
+            ret['peaks'][tapping_file] = recording_peaks
+        else:
+            ret['peaks'][tapping_file] = recording_peaks - lag
 
     return ret

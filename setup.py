@@ -9,7 +9,7 @@ HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
 
 setup(name='m2-rec2taps',
-      version='0.9',
+      version='0.9.2',
       description='Utility to obtain tap times from a tapping recording',
       long_description=README,
       long_description_content_type='text/markdown',
