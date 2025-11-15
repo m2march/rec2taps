@@ -228,15 +228,10 @@ def individual_channel_processing(stimuli_file, stimuli_channel,
         'peaks': {}
     }
     for tapping_file, tapping_channel in tapping_file_channels:
-        #tapping_sr, tapping_data = wavfile.read(tapping_file)
         tapping_data, tapping_sr = librosa.load(tapping_file, sr=None,
                                                 mono=False)
 
         assert(tapping_sr == stimuli_sr)
-        peaks = numpy_peaks(tapping_data[:, tapping_channel], tapping_sr, 
-                            distance=distance, prominence=prominence)
-        prominence_a = prominence_amp(tapping_data[tapping_channel,:],
-                                      prominence)
         peaks = librosa.onset.onset_detect(
             y = tapping_data[tapping_channel,:],
             sr = tapping_sr,
@@ -253,6 +248,6 @@ def individual_channel_processing(stimuli_file, stimuli_channel,
         if ignore_lag:
             ret['peaks'][tapping_file] = recording_peaks
         else:
-            ret['peaks'][tapping_file] = recording_peaks - lag
+            ret['peaks'][tapping_file] = recording_peaks + lag
 
     return ret
