@@ -9,7 +9,7 @@ from m2.rec2taps import defaults
 from m2.rec2taps import errors
 from pathlib import Path
 
-FILE_CHANNEL_RE = re.compile(r'([\w\.]+):(\d+)')
+FILE_CHANNEL_RE = re.compile(r'([\w\.\ \(\)\_\-]+):(\d+)')
 
 def rec2taps():
     parser = argparse.ArgumentParser(
@@ -75,10 +75,10 @@ def rec2taps():
 
         can_proceed = True
 
-        for s in [args.stimuli, args.recording] + args.tapping_files:
-            if FILE_CHANNEL_RE.match(s) is None:
-                logging.error(f' {s} does not have the expected format `file_name:channel_number`')
-                can_proceed = False
+        #for s in [args.stimuli, args.recording] + args.tapping_files:
+        #    if FILE_CHANNEL_RE.match(s) is None:
+        #       logging.error(f' {s} does not have the expected format `file_name:channel_number`')
+        #       can_proceed = False
 
         if len(args.tapping_files) == 0:
             logging.error(' No tapping files were provided.')
@@ -88,11 +88,11 @@ def rec2taps():
             logging.error(' Files were not properly input. Stopping.')
             sys.exit()
 
-        stimuli_file, stimuli_channel = FILE_CHANNEL_RE.match(args.stimuli).groups()
-        loopback_file, loopback_channel = FILE_CHANNEL_RE.match(args.recording).groups()
+        stimuli_file, stimuli_channel = args.stimuli.split(':')
+        loopback_file, loopback_channel = args.recording.split(':')
 
 
-        tapping_files_channels = [FILE_CHANNEL_RE.match(t).groups() for t in args.tapping_files]
+        tapping_files_channels = [t.split(':') for t in args.tapping_files]
 
         audio_files = [stimuli_file, loopback_file] + [
             f for f, c in tapping_files_channels
