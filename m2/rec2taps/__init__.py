@@ -45,6 +45,7 @@ def numpy_peaks(data, sr, distance=DEFAULT_DISTANCE,
 		    deviation
     '''
     prominence_a = prominence_amp(data, prominence)
+    logging.info(f'Prominence: {prominence}; amplitude: {prominence_a}')
     rect_ys = rectify(data, prominence_a)
     distance = distance * sr / 1000
     peaks, props = find_peaks(rect_ys, prominence=prominence_a,
@@ -231,6 +232,8 @@ def individual_channel_processing(stimuli_file, stimuli_channel,
         tapping_data, tapping_sr = librosa.load(tapping_file, sr=None,
                                                 mono=False)
 
+        prominence_a = prominence_amp(tapping_data, prominence)
+        logging.info(f'Delta used: {prominence_a}')
         assert(tapping_sr == stimuli_sr)
         peaks = librosa.onset.onset_detect(
             y = tapping_data[tapping_channel,:],
@@ -239,7 +242,7 @@ def individual_channel_processing(stimuli_file, stimuli_channel,
             hop_length = 16,
             wait = int(tapping_sr * (distance / 1000) / 512),
             backtrack = True,
-            delta = 0.5,
+            delta = prominence_a,
             #pre_max = int(tapping_sr * (distance / 1000) / 512) // 2,
             #post_max = int(tapping_sr * (distance / 1000) / 512) // 2,
         )
