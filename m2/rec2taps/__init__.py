@@ -212,6 +212,8 @@ def individual_channel_processing(stimuli_file, stimuli_channel,
                                   tapping_file_channels,
                                   distance,
                                   prominence,
+                                  pre_avg,
+                                  post_avg,
                                   ignore_lag = False
                                  ):
 
@@ -233,7 +235,7 @@ def individual_channel_processing(stimuli_file, stimuli_channel,
                                                 mono=False)
 
         prominence_a = prominence_amp(tapping_data, prominence)
-        logging.info(f'Delta used: {prominence_a}')
+        logging.info(f'Delta used: {prominence_a} for `librosa.onset.onset_detect`')
         assert(tapping_sr == stimuli_sr)
         peaks = librosa.onset.onset_detect(
             y = tapping_data[tapping_channel,:],
@@ -245,6 +247,8 @@ def individual_channel_processing(stimuli_file, stimuli_channel,
             delta = prominence_a,
             #pre_max = int(tapping_sr * (distance / 1000) / 512) // 2,
             #post_max = int(tapping_sr * (distance / 1000) / 512) // 2,
+            pre_avg = int(tapping_sr * (pre_avg / 1000) / 512),
+            post_avg = int(tapping_sr * (post_avg / 1000) / 512)
         )
 
         recording_peaks = (np.array(peaks) / tapping_sr * 1000)

@@ -41,6 +41,12 @@ def rec2taps():
                         type=float, default=defaults.DEFAULT_PROMINENCE,
                         help=('Minimum prominence of the detected peaks '
                               '(in multiples of the input signal std).'))
+    parser.add_argument('--pre_avg', dest='pre_avg',
+                        type=float, default=defaults.DEFAULT_PRE_AVG,
+                        help=('Prior window (in ms) for average calculation of prominence of the detected peaks'))
+    parser.add_argument('--post_avg', dest='post_avg',
+                        type=float, default=defaults.DEFAULT_POST_AVG,
+                        help=('Posterior window (in ms) for average calculation of prominence of the detected peaks'))
     parser.add_argument('-v', dest='verbose',
                         action='store_true', 
                         help=('Enables printing standard information.'))
@@ -67,7 +73,7 @@ def rec2taps():
     args = parser.parse_args()
 
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger().setLevel(logging.INFO)
 
     logging.debug('Input paramters:' + str([args.stimuli, args.recording, args.tapping_files]))
     if args.stimuli.find(':') > -1 or len(args.tapping_files) > 0:
@@ -120,6 +126,7 @@ def rec2taps():
         synced_taps = m2.rec2taps.individual_channel_processing(
             stimuli_file, stimuli_channel, loopback_file, loopback_channel,
             tapping_files_channels, args.distance, args.prominence,
+            args.pre_avg, args.post_avg,
             args.ignore_lag
         )
 
